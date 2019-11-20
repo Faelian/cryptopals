@@ -12,4 +12,4 @@ with open('7.txt', 'r') as f:
 
 	plaintext = cipher.decrypt(ciphertext)
 
-	print (plaintext)
+	print (plaintext.decode('utf-8'))
