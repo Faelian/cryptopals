@@ -78,16 +78,8 @@ def aes_cbc_decrypt(iv, ciphertext, key):
 
 
 with open ('10.txt', 'r') as f:
-	#print (f.read())
 	iv = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-	message = """Hey you,
-No you don't to go
-Oh oh
-No you don't have to do so"""
+	ciphertext = base64.b64decode(f.read())
 
-	message_as_bytes = message.encode()
-
-	ciphertext = aes_cbc_encrypt(iv, message_as_bytes, 'YELLOW SUBMARINE')
-	print(ciphertext)
 	cleartext = aes_cbc_decrypt(iv, ciphertext, 'YELLOW SUBMARINE').decode()
 	print (cleartext)
