@@ -32,11 +32,9 @@ def encryption_oracle(cleartext):
 
 	# encrypt ecb / cbc half of the time
 	if random.randint(0,1) == 0: # encrypt ECB
-		print('ECB')
 		ciphertext = aes_ecb_encrypt(cleartext, aes_key)
 
 	else : # encrypt CBC
-		print('CBC')
 		# generate IV
 		iv = secrets.token_bytes(16)
 		ciphertext = aes_cbc_encrypt(iv, cleartext, aes_key)
