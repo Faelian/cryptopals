@@ -76,10 +76,10 @@ def aes_cbc_decrypt(iv, ciphertext, key):
 
 	return cleartext
 
-
-with open ('10.txt', 'r') as f:
-	iv = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-	ciphertext = base64.b64decode(f.read())
-
-	cleartext = aes_cbc_decrypt(iv, ciphertext, 'YELLOW SUBMARINE').decode()
-	print (cleartext)
+if __name__ == '__main__':
+	with open ('10.txt', 'r') as f:
+		iv = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+		ciphertext = base64.b64decode(f.read())
+	
+		cleartext = aes_cbc_decrypt(iv, ciphertext, 'YELLOW SUBMARINE').decode()
+		print (cleartext)
