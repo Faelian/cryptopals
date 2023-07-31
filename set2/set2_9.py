@@ -3,7 +3,7 @@
 
 def pkcs7(unpadded_block, length):
 	bytes_to_add = length - len(unpadded_block)
-	padded_block = unpadded_block + b'\x04' * bytes_to_add
+	padded_block = unpadded_block + chr(bytes_to_add).encode() * bytes_to_add
 
 	return padded_block
 
