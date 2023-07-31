@@ -19,7 +19,10 @@ def unpad_pkcs7(padded_block):
 	padding = padded_block[-pad_length:]
 	for byte_pad in padding:
 		if byte_pad != pad_length:
-			raise ValueError(f'PKCS#7 padding error: every byte of the padding should have the value of the length of the padding.')
+			raise ValueError(f'''
+PKCS#7 padding error: every byte of the padding should have the value of the length of the padding.
+pad_length={pad_length}
+{padded_block}''')
 
 	padded_block = padded_block[:-pad_length]
 

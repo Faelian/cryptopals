@@ -5,7 +5,7 @@ import secrets
 import random
 from Crypto.Cipher import AES
 from set2_10 import aes_cbc_encrypt, aes_cbc_decrypt
-from set2_10 import pad_pkcs7
+from set2_10 import pad_pkcs7, unpad_pkcs7
 
 def aes_ecb_encrypt(cleartext, key):
 	cipher = AES.new(key, AES.MODE_ECB)
@@ -15,6 +15,12 @@ def aes_ecb_encrypt(cleartext, key):
 	ciphertext = cipher.encrypt(cleartext)
 
 	return ciphertext
+
+def aes_ecb_decrypt(ciphertext, key):
+	cipher = AES.new(key, AES.MODE_ECB)
+	cleartext = cipher.decrypt(ciphertext)
+	
+	return unpad_pkcs7(cleartext)
 
 def generate_random_aes_key():
 	return secrets.token_bytes(16)
