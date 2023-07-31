@@ -5,71 +5,98 @@ from Crypto.Cipher import AES
 from set2_11 import aes_ecb_encrypt, detect_aes_mode
 import base64
 import string
-
-#debug 
-import re
+from hexdump import hexdump
 
 AES_KEY = b'\xac\xdb\x9a\xf1\xc5(0\x96\xf5H\x80\xc3\x1eG\x8c\x8f'
-unknown_b64_string = "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVoK"
-# unknown_b64_string = """
-# Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
-# aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
-# dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
-# YnkK"""
+BLOCKSIZE = 16
+# unknown_b64_string = "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVoK"
+unknown_b64_string = """
+Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+YnkK"""
+
+def print_hex_string(data):
+    result = ''
+
+    for c in data:
+        result += f'\\x{c:02x}'
+
+    print("b'" + result + "'")
+
 
 def encryption_oracle_ecb(cleartext):
-	# encrypt ecb / cbc half of the time
 	cleartext = cleartext + base64.b64decode(unknown_b64_string)
-	#print ("clear : %s" % cleartext)
 	ciphertext = aes_ecb_encrypt(cleartext, AES_KEY)
 
 	return ciphertext
 
 
-def bruteforce_block (blocksize_of_the_cipher):
-	decrypted = ""
 
-	len_ciphertext = len(encryption_oracle_ecb(b''))
-	number_of_blocks = int(len_ciphertext / blocksize_of_the_cipher)
+def decrypt_byte_first_block(blocksize, decrypted):
 
-	# for block_number in range(0, number_of_blocks):
-	# 	for i in range (blocksize_of_the_cipher-1, -1, -1):
-	# 		input_length = i + block_number * blocksize_of_the_cipher
-	# 		print (input_length)	
+	padding = b'A'* (blocksize - len(decrypted) - 1)
 
+	ciphertext = encryption_oracle_ecb(padding)
+	first_block = ciphertext[:blocksize-1] # list start at 0
 
-	for i in range(blocksize_of_the_cipher-1, 0, -1):
-		decrypted = decrypted + bruteforce_byte(blocksize_of_the_cipher, i, decrypted)
-		print(i)
-		print (decrypted)
-
-def bruteforce_byte(blocksize_of_the_cipher, input_length, decrypted):
-	## get the last encrypted byte
-	ciphertext = encryption_oracle_ecb(b'A' * input_length)
-	formated_ciphertext = ":".join("{:02x}".format(c) for c in ciphertext)
-	# print ("debug : " +formated_ciphertext[:23] + ' ' + formated_ciphertext[24:47] + ' '
-	# 	+ formated_ciphertext[48:71] + ' ' + formated_ciphertext[72:] )
-
-	first_encrypted_byte = ciphertext[blocksize_of_the_cipher - 1] # because lists begins at 0
-	# print ("debug : " + "0x{:02x}".format(first_encrypted_byte))
-	# print ("debug : " + repr(first_encrypted_byte))
-
-	## bruteforce the last byte
-	decrypted_byte = '.'
 	for letter in string.printable:
-		# We need to add the already decrypted text at the begining of the input
-		# otherwise the ciphertext won't match the cleartext
-		ciphertext = encryption_oracle_ecb (b'A' * input_length + decrypted.encode() + letter.encode())
+		encrypted = encryption_oracle_ecb(padding + decrypted + letter.encode())
 
-		if ciphertext [blocksize_of_the_cipher - 1] == first_encrypted_byte:
-			decrypted_byte = letter
-			print (letter)
-			break
+		if encrypted[:blocksize-1] == first_block:
+			return letter.encode()
 
-	return decrypted_byte
+	return '.'.encode()
+
+
+# Divide the ciphertext in chunk of `size`, and return the chunk n
+# (start at 0 like arrays)
+def get_block(ciphertext, n, size):
+	return ciphertext[size*n:size*(n+1)]
+
+def decrypt_byte(decrypted):
+	global BLOCKSIZE
+
+	"""
+	In ECB, 2 identical input will produce the same output
+
+	We use our oracle to encrypt 15 'A' + the 1st byte of cleartext.
+
+	We can then test 15 'A' + X, to find X = 1st char of plaintext
+
+	Decrease the padding, add the decrypted text and repeat
+	i.e: 14 'A' + Decrypted + X
+
+	----------------------------------------------------------------------
+
+	Once we have decrypted the 1st block.
+	We will have to watch the 2nd block for the decryption. Then 3rd, etc
+	
+	"""
+
+	# the block to watch, 
+	n_block, _ = divmod(len(decrypted), BLOCKSIZE)
+
+	# how much b'A' we use to pad the text
+	pad_length = 15 - len(decrypted) % BLOCKSIZE
+
+	ciphertext = encryption_oracle_ecb(b'A'*pad_length)
+	reference_ciphertext_block = get_block(ciphertext, n_block, BLOCKSIZE)
+
+	for letter in string.printable:
+		encrypted = encryption_oracle_ecb(b'A'*pad_length + decrypted + letter.encode())
+
+		block_to_watch = get_block(encrypted, n_block, BLOCKSIZE)
+
+		if  block_to_watch == reference_ciphertext_block:
+			return letter.encode()
+
+	return b''
+
+
 
 def byte_a_time_ECB_decryption():
-	print ("À l'assaut !")
+	global BLOCKSIZE
 
 	# detect the block size of the cipher
 	"""
@@ -84,30 +111,38 @@ def byte_a_time_ECB_decryption():
 	len2 = None
 
 	for i in range(0, 128):
-		length_of_ciphertext = len(encryption_oracle_ecb(b'A' * i))
+		ciphertext = encryption_oracle_ecb(b'A' * i)
+		length_of_ciphertext = len(ciphertext)
 
 		if length_of_ciphertext != len1:
 			len2 = length_of_ciphertext
 			break
 
-	blocksize_of_the_cipher = len2 - len1
+	BLOCKSIZE = len2 - len1 # 16 with AES
 
 	# detect if the encryption mode is ECB
 	"""
 	If ECB is used, the second and third block of ciphertext should be identical for a constant input
 	ex : b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 	"""
-	AES_mode = detect_aes_mode(encryption_oracle_ecb(b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'))
+	AES_mode = detect_aes_mode(encryption_oracle_ecb(b'A'*BLOCKSIZE*4))
 
 	if AES_mode != 'ECB':
 		raise ('The mode is not ECB, and byte_a_time_ECB_decryption() only works with ECB. :/')
 		return
 
-	bruteforce_block(blocksize_of_the_cipher)
+	"""
+	Now let's decrypt the ECB ciphertext. One byte at the time
+	"""
 
+	decrypted = b''
+	max_length_of_ciphertext = len(encryption_oracle_ecb(b''))
 
-	# repeat !
+	for i in range(0, max_length_of_ciphertext):
+		decrypted += decrypt_byte(decrypted)
 
+	# Victory !
+	print(decrypted.decode())
 
 
 if __name__ == '__main__':
