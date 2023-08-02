@@ -4,9 +4,7 @@
 from set2_11 import aes_ecb_encrypt, aes_ecb_decrypt
 import json
 
-IV = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 AES_KEY = b'\xaeJK^\xe1d\xb1M\xfb\xb3[%-\x9c\x14\xe1'
-
 
 def print_hex(data):
     result = ''

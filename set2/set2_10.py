@@ -51,7 +51,6 @@ def aes_cbc_encrypt(iv, cleartext, key):
 	else:
 		blocks[-1] = pad_pkcs7(blocks[-1], 16)
 
-	
 	# for the exercice we implement CBC with ECB
 	cipher = AES.new(key, AES.MODE_ECB) 
 	
