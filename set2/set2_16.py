@@ -4,6 +4,7 @@
 from set2_10 import unpad_pkcs7, pad_pkcs7
 from set2_10 import aes_cbc_encrypt, aes_cbc_decrypt
 from set2_14 import split_into_chunks, print_hex_chunks
+from hexdoor import  hexdump
 
 
 AES_KEY = b'\xaeJK^\xe1d\xb1M\xfb\xb3[%-\x9c\x14\xe1'
@@ -19,30 +20,37 @@ def encryption_oracle(cleartext):
 
 	ciphertext = aes_cbc_encrypt(IV, cleartext, AES_KEY)
 
-	return ciphertext
+	return bytearray(ciphertext)
 
 def is_admin(ciphertext):
 	cleartext = aes_cbc_decrypt(IV, ciphertext, AES_KEY)
-	cleartext = cleartext.decode()
-	
-	tokens = dict(x.split("=") for x in cleartext.split(";"))
+	hexdump(cleartext)
 
-	print(repr(tokens))
+	if b';admin=true;' in cleartext:
+		return True
+	else:
+		return False
 
-	for key, value in tokens.items():
-		if key == 'admin' and value.lower() == 'true':
-			return True
+def xor(a, b, c):
+	return ord(a) ^ b ^ ord(c)
 
-	return False
+if __name__ == '__main__':
+
+	ciphertext = encryption_oracle(b'A'*16 + b':admin<true')
+
+	hexdump(ciphertext)
+	print(is_admin(ciphertext))
+
+	print("~~~~~ Bit Flipping ~~~~")
+
+	ciphertext[0x20] = xor(b':', ciphertext[0x20], b';')
+	ciphertext[0x26] = xor(b'<', ciphertext[0x26], b'=')
+	# ciphertext[0x20] = ciphertext[0x20] - 1
+	# ciphertext[0x26] = ciphertext[0x26] + 1
+	hexdump(ciphertext)
+
+	print(is_admin(ciphertext))
 
 
 
-ciphertext = encryption_oracle(b"hello-world")
 
-print_hex_chunks(ciphertext)
-
-
-
-
-
-#print(aes_cbc_decrypt(IV, ciphertext, AES_KEY))
