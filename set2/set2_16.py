@@ -20,7 +20,7 @@ def encryption_oracle(cleartext):
 
 	ciphertext = aes_cbc_encrypt(IV, cleartext, AES_KEY)
 
-	return bytearray(ciphertext)
+	return ciphertext
 
 def is_admin(ciphertext):
 	cleartext = aes_cbc_decrypt(IV, ciphertext, AES_KEY)

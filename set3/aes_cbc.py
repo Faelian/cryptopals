@@ -67,7 +67,7 @@ def aes_cbc_encrypt(iv, cleartext, key):
 		
 		previous_block = cipher_block
 
-	return ciphertext
+	return bytearray(ciphertext)
 
 def aes_cbc_decrypt(iv, ciphertext, key):
 	# divide the ciphertext in blocks of 16 bytes (AES standard block)
