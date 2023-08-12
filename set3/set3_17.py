@@ -25,13 +25,13 @@ secret_strings = [
 # ~~~ Exercice functions ~~~
 
 def encryption_oracle():
-	#selected_secrettext = randrange(len(secret_strings))
-	selected_secrettext = 0
+	selected_secrettext = randrange(len(secret_strings))
+	#selected_secrettext = 0
 	secret = secret_strings[selected_secrettext]
 	cleartext = b64decode(secret)
 	
 	iv = token_bytes(16)
-	iv = b'\x00'*15 + b'\x42'
+	#iv = b'\x00'*15 + b'\x42'
 	ciphertext = aes_cbc_encrypt(iv, cleartext, AES_KEY)
 
 	return (iv, ciphertext)
@@ -177,7 +177,7 @@ def bruteforce_byte(iv, ciphertext_original, x_array):
 		ciphertext[byte_to_change + i] = x ^ pad_value
 		i += 1
 
-	hexdump(ciphertext)
+	# hexdump(ciphertext)
 
 	for i in range(0x00, 0x100):
 		if i == original_value:
@@ -186,50 +186,53 @@ def bruteforce_byte(iv, ciphertext_original, x_array):
 		ciphertext[byte_to_change] = i
 		
 		if decryption_oracle(iv, ciphertext, AES_KEY):
-			print(f'0x{i:02x}')
+			# print(f'0x{i:02x}')
 			t = i
 	
 	if t is None:
-		print("I guess this shouldn't happen")
 		t = original_value
 
-	# see this for reference of what t, c, x, and p are
+	# see the schema above for what x, c and p are 
 	x = t ^ len(x_array) + 0x01
 	c = original_value
-	print(f"x: 0x{x:02x}")
-	print(f"c: 0x{c:02x}")
+	# print(f"x: 0x{x:02x}")
+	# print(f"c: 0x{c:02x}")
 	p = x ^ c
-	print(f"p: 0x{p:02x}")
+	# print(f"p: 0x{p:02x}")
 
 	return x, p
 
-if __name__ == '__main__':
-	iv, ciphertext = encryption_oracle()
-	print(f"iv: {iv.hex()}, ciphertext: {ciphertext.hex()}")
 
-	print(decryption_oracle(iv, ciphertext, AES_KEY))
-	hexdump(ciphertext)
-
+def decrypt_block(iv, ciphertext):
 	x_array = b''
 	decrypted = b''
 	x = None
 
 	for i in range(0, 0x10):
-		print(f"i: {i}")
 		x, p = bruteforce_byte(iv, ciphertext, x_array)
 
 		x_array = x.to_bytes(1, 'little') + x_array
 		decrypted = p.to_bytes(1, 'little') + decrypted
-		print(decrypted)
 
-	ciphertext = ciphertext[:-0x10]
-	x_array = b''
+	return decrypted
 
-	for i in range(0, 0x10):
-		print(f"i: {i}")
-		x, p = bruteforce_byte(iv, ciphertext, x_array)
+def decrypt_aes_cbc(iv, ciphertext):
+	decrypted = b''
 
-		x_array = x.to_bytes(1, 'little') + x_array
-		decrypted = p.to_bytes(1, 'little') + decrypted
-		print(decrypted)
+	while len(ciphertext) > 0x10:
+		decrypted = decrypt_block(iv, ciphertext) + decrypted
+		ciphertext = ciphertext[:-0x10]
 
+	ciphertext = iv + ciphertext
+	decrypted = decrypt_block(iv, ciphertext) + decrypted
+
+	return unpad_pkcs7(decrypted)
+
+if __name__ == '__main__':
+	iv, ciphertext = encryption_oracle()
+	#print(f"iv: {iv.hex()}, ciphertext: {ciphertext.hex()}")
+
+	#hexdump(ciphertext)
+
+	cleartext = decrypt_aes_cbc(iv, ciphertext)
+	print(cleartext)
