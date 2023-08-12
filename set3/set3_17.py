@@ -27,8 +27,8 @@ secret_strings = [
 def encryption_oracle():
 	#selected_secrettext = randrange(len(secret_strings))
 	selected_secrettext = 0
-	cleartext = secret_strings[selected_secrettext]
-	cleartext = cleartext.encode()
+	secret = secret_strings[selected_secrettext]
+	cleartext = b64decode(secret)
 	
 	iv = token_bytes(16)
 	iv = b'\x00'*15 + b'\x42'
@@ -107,6 +107,102 @@ def bruteforce_last_hexbyte(iv, ciphertext_original):
 	
 	return good_val
 
+
+"""
+For reference see this video : https://www.youtube.com/watch?v=4EgD4PEatA8
+
+     Ciphertetext 1                          Ciphertext 2
+┌──┬──┬──┬──┬──┬──┬──┬──┐               ┌──┬──┬──┬──┬──┬──┬──┬──┐
+│  │  │  │  │  │  │C2│C1│               │  │  │  │  │  │  │  │  │
+└──┴──┴──┴─┬┴──┴──┴──┴──┘               └──┴──┴──┴──┼──┴──┴──┴──┘
+           │                                        │
+           │                               ┌────────▼─────────┐
+           │                   Key ───────►│   Block Cipher   │
+           │                               │    Decryption    │
+           │                               └────────┬─────────┘
+           │                                        │
+           │                            ┌──┬──┬──┬──▼──┬──┬──┬──┐
+           │                            │  │  │  │  │  │  │X2│X1│
+           │                            └──┴──┴──┴──┼──┴──┴──┴──┘
+           │                                        │
+           │                                      ┌─▼─┐
+           └─────────────────────────────────────►│Xor│
+                                                  └─┬─┘
+                                                    │
+                                        ┌──┬──┬──┬──▼──┬──┬──┬──┐
+                                        │  │  │  │  │  │  │P2│P1│
+                                        └──┴──┴──┴──┴──┴──┴──┴──┘
+                                               Plaintext
+
+We change the value of the previous block of ciphertext to find T1 such as
+P1 = 0x01
+
+This would be valid padding
+
+     Ciphertetext 1                          Ciphertext 2
+┌──┬──┬──┬──┬──┬──┬──┬──┐               ┌──┬──┬──┬──┬──┬──┬──┬──┐
+│  │  │  │  │  │  │  │T1│               │  │  │  │  │  │  │  │  │
+└──┴──┴──┴─┬┴──┴──┴──┴──┘               └──┴──┴──┴──┼──┴──┴──┴──┘
+           │                                        │
+           │                               ┌────────▼─────────┐
+           │                   Key ───────►│   Block Cipher   │
+           │                               │    Decryption    │
+           │                               └────────┬─────────┘
+           │                                        │
+           │                            ┌──┬──┬──┬──▼──┬──┬──┬──┐
+           │                            │  │  │  │  │  │  │X2│X1│
+           │                            └──┴──┴──┴──┼──┴──┴──┴──┘
+           │                                        │
+           │                                      ┌─▼─┐
+           └─────────────────────────────────────►│Xor│
+                                                  └─┬─┘
+                                                    │
+                                        ┌──┬──┬──┬──▼──┬──┬──┬──┐
+                                        │  │  │  │  │  │  │  │01│
+                                        └──┴──┴──┴──┴──┴──┴──┴──┘
+                                               Plaintext
+"""
+
+def bruteforce_byte(iv, ciphertext_original, x_array):
+	ciphertext = bytearray(ciphertext_original)
+	pad_value = len(x_array) + 0x1
+
+	byte_to_change = len(ciphertext) - 0x10 - pad_value
+
+	original_value = ciphertext[byte_to_change]
+	t = None
+
+	i = 1
+	for x in x_array:
+		ciphertext[byte_to_change + i] = x ^ pad_value
+		i += 1
+
+	hexdump(ciphertext)
+
+	for i in range(0x00, 0x100):
+		if i == original_value:
+			continue
+
+		ciphertext[byte_to_change] = i
+		
+		if decryption_oracle(iv, ciphertext, AES_KEY):
+			print(f'0x{i:02x}')
+			t = i
+	
+	if t is None:
+		print("I guess this shouldn't happen")
+		t = original_value
+
+	# see this for reference of what t, c, x, and p are
+	x = t ^ len(x_array) + 0x01
+	c = original_value
+	print(f"x: 0x{x:02x}")
+	print(f"c: 0x{c:02x}")
+	p = x ^ c
+	print(f"p: 0x{p:02x}")
+
+	return x, p
+
 if __name__ == '__main__':
 	iv, ciphertext = encryption_oracle()
 	print(f"iv: {iv.hex()}, ciphertext: {ciphertext.hex()}")
@@ -114,13 +210,26 @@ if __name__ == '__main__':
 	print(decryption_oracle(iv, ciphertext, AES_KEY))
 	hexdump(ciphertext)
 
-	yes = bruteforce_last_hexbyte(iv, ciphertext)
+	x_array = b''
+	decrypted = b''
+	x = None
 
-	x1 = yes ^ 0x01
-	print(f"x1: 0x{x1:02x}")
+	for i in range(0, 0x10):
+		print(f"i: {i}")
+		x, p = bruteforce_byte(iv, ciphertext, x_array)
 
-	c1 = ciphertext[0x2f]
-	print(f"c1: 0x{c1:02x}")
+		x_array = x.to_bytes(1, 'little') + x_array
+		decrypted = p.to_bytes(1, 'little') + decrypted
+		print(decrypted)
 
-	p1 = x1 ^ c1
-	print(f"p1: 0x{p1:02x}")
+	ciphertext = ciphertext[:-0x10]
+	x_array = b''
+
+	for i in range(0, 0x10):
+		print(f"i: {i}")
+		x, p = bruteforce_byte(iv, ciphertext, x_array)
+
+		x_array = x.to_bytes(1, 'little') + x_array
+		decrypted = p.to_bytes(1, 'little') + decrypted
+		print(decrypted)
+
