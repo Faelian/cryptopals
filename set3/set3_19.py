@@ -95,15 +95,18 @@ def scoreString (dechiphered_string) :
 		elif (c not in string.printable):
 			return 100000
 
-
-	if totCount == 0 : totCount = 1
-	
 	chiSquareScore = 0
 
 	for i in range (0, len(char_count)):
-		char_freq[i] = char_count[i] / totCount
-		chiSquareScore = chiSquareScore + ((char_freq[i] - expFreqsIncludingSpace[i]) * (char_freq[i] - expFreqsIncludingSpace[i]) / \
-		expFreqsIncludingSpace[i]) 
+		try:
+			char_freq[i] = char_count[i] / totCount
+			chiSquareScore = chiSquareScore + ((char_freq[i] - expFreqsIncludingSpace[i]) * (char_freq[i] - expFreqsIncludingSpace[i]) / \
+			expFreqsIncludingSpace[i])
+
+		# si totCount = 0, on a que des caractères non ascii ce qui est peu probable.
+		# J'ai donc mis un score un peu naze de 50
+		except:
+			chiSquareScore = 50
 
 	return chiSquareScore
 
@@ -119,14 +122,13 @@ def break_single_key_xor(encrypted_bytes):
 		# si on ne peut pas décoder la chaine
 		try:
 			decrypted_string = bytes(decrypted).decode('utf-8')
-		
+
 		except UnicodeDecodeError as e:
 			#print (repr(e))
 			continue
 
 		score = scoreString (decrypted_string)
 
-		# si on a plusieurs message avec le même score, on les affiche tous	
 		if (score < final_score):
 			message = decrypted_string
 			final_key = key
@@ -142,6 +144,18 @@ def split_in_single_key(message, single_key_blocks):
 	for i in range(len(message)):
 		single_key_blocks[i].append(message[i])
 
+
+def decrypt_message(ciphertext, keystream):
+	decrypted = ''
+
+	for i in range(len(ciphertext)):
+		k = keystream[i]
+		c = ciphertext[i]
+
+		decrypted += chr(k ^ c)
+
+	return decrypted
+
 if __name__ == '__main__':
 	# initalize the challenge:
 	# encrypt every message with the KEY
@@ -152,7 +166,9 @@ if __name__ == '__main__':
 		ciphertexts.append(encrypted_message)
 
 	# Since the same keystream is use to encrypt every message,
-	# we can group bytes of ciphertext by the keystream that encrypt the message
+	# we can arrange the ciphertexts as a single key xor.
+
+	# -> the first letter of every ciphertext is a single xor byte ciphertext. Etc
 
 	max_length_of_ciphertext = max([len(ciphertext) for ciphertext in ciphertexts])
 
@@ -163,11 +179,16 @@ if __name__ == '__main__':
 	for encrypted_message in ciphertexts:
 		split_in_single_key(encrypted_message, single_key_blocks)	
 
-	pprint(single_key_blocks[0])	
-
+	keystream = []
 
 	for single_key_bytes in single_key_blocks:
-		print(bytes(single_key_bytes).hex())
+		key, message = break_single_key_xor(single_key_bytes)
+		keystream.append(key)
 
-	key, message = break_single_key_xor(single_key_blocks[0])
-	print(message)
+	ciphertext = ciphertexts[0]
+	cleartext = []
+
+	# We have a few missing chars at the end. But it's pretty correct
+
+	for ciphertext in ciphertexts:
+		print(decrypt_message(ciphertext, keystream))
