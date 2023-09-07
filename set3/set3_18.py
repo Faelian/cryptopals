@@ -38,9 +38,10 @@ def xor_blocks(block1, block2):
 	return bytes(xored_array)
 
 
-iv = b'\x00'*8
-key = b'YELLOW SUBMARINE'
+if __name__ == '__main__':
+	iv = b'\x00'*8
+	key = b'YELLOW SUBMARINE'
 
-ciphertext = base64.b64decode(b'L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==')
-cleartext = aes_ctr(iv, ciphertext, key)
-print(cleartext.decode())
+	ciphertext = base64.b64decode(b'L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==')
+	cleartext = aes_ctr(iv, ciphertext, key)
+	print(cleartext.decode())
