@@ -3,12 +3,12 @@
 
 # w, n, m, r, a, u, d, s, b, t, c, l, f
 
-w, n, m, r = 64, 312, 156, 31
-a = 0xb5026f5aa96619e9
-u, d = 29, 0x5555555555555555
-s, b = 17, 0x71d67fffeda60000
-t, c = 37, 0xfff7eee000000000
-l = 43
+w, n, m, r = 32, 624, 397, 31
+a = 0x9908b0df
+u, d = 11, 0xffffffff
+s, b =  7, 0x9d2c5680
+t, c = 15, 0xefc60000
+l = 18
 
 print(f"w:{w}, n:{n}, m:{m}, r:{r}")
 print(f"a:{a}")
