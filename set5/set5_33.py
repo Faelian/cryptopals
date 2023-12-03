@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 #coding: utf-8
 
-from hashlib import md5
+from hashlib import sha1
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
 import secrets
+import binascii
 
 # Diffie-Hellman constants
 
@@ -24,7 +27,29 @@ class Diffie_Hellman(object):
 
 
 	def derive_secret(self, B):
-		self.shared = mod_exp(B, self.secret, p)
+		self.shared = mod_exp(B, self.secret, self.p)
+
+	def derive_key(self):
+		if not self.shared:
+			print('we first need a shared secret')
+			return None
+
+		print(f'shared secret: {hex(self.shared)}')
+		#key = self.shared.to_bytes(128, byteorder='little')
+		key = binascii.unhexlify(hex(self.shared)[2:])
+		key = sha1(key).digest()[:16]
+		return key
+
+
+	def encrypt_aes(self, msg):
+		iv = secrets.token_bytes(16)
+		key = self.derive_key()
+		print(f'key: {key.hex()}')
+
+		cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+		ciphertext = cipher.encrypt(pad(msg, AES.block_size))
+
+		return (iv, ciphertext) 
 
 # b puissance e modulo m
 def mod_exp(b, e, m):
